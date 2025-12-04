@@ -20,7 +20,7 @@ if 'calculated' not in st.session_state:
 if 'results' not in st.session_state:
     st.session_state.results = {}
 
-st.title("🏭 明日方舟基建排班优化器")
+st.title("🏭 明日方舟基建排班生成器")
 
 # ==========================================
 # 1. 侧边栏：数据导入 (支持粘贴)
@@ -48,7 +48,7 @@ else:
     pasted_ops = st.sidebar.text_area(
         "在此处粘贴 MAA 导出的 JSON 内容:",
         height=300,
-        help="在 MAA '连接设置' -> '导出干员数据' -> 点击 '复制'，然后在此处 Ctrl+V",
+        help="在 MAA '小工具' -> '干员识别' -> 识别后点击 '复制到剪贴板'，然后在此处 Ctrl+V粘贴",
         placeholder='[\n  {\n    "id": "char_002_amiya",\n    "name": "阿米娅",\n    ...\n  }\n]'
     )
     if pasted_ops:
