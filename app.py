@@ -59,9 +59,9 @@ with st.sidebar:
     with import_tab1:
         pasted_ops = st.text_area(
             "粘贴 MAA 导出的 JSON",
-            height=200,
-            placeholder='[{"id": "char_002_amiya", ...}]',
-            help="MAA -> 连接设置 -> 导出干员数据 -> 复制"
+            height=300,
+            help="在 MAA '小工具' -> '干员识别' -> 识别后点击 '复制到剪贴板'，然后在此处 Ctrl+V粘贴",
+            placeholder='[\n  {\n    "id": "char_002_amiya",\n    "name": "阿米娅",\n    ...\n  }\n]'
         )
         if pasted_ops:
             st.success("已检测到文本数据")
@@ -70,7 +70,7 @@ with st.sidebar:
         uploaded_ops = st.file_uploader("上传 operators.json", type="json")
 
     st.markdown("---")
-    st.caption(f"v1.2.0 | Author: 一只摆烂的42")
+    st.caption(f"v1.3.0 | Author: 一只摆烂的42")
 
 # ==========================================
 # 2. 主界面：分步配置向导
@@ -89,14 +89,17 @@ with st.container(border=True):
     with l_col1:
         layout_preset = st.radio(
             "⚡ 快速预设 (3发电站)",
-            ["2-4-3 (均衡)", "1-5-3 (极限制造)", "自定义"],
+            ["3-3-3 (搓玉推荐)", "2-4-3 (均衡)", "1-5-3 (极限制造)", "自定义"],
             index=0,
             horizontal=False
         )
 
     with l_col2:
         # 根据预设自动填充，或者允许自定义
-        if layout_preset == "2-4-3 (均衡)":
+        if layout_preset == "3-3-3 (搓玉推荐)":
+            def_t, def_m = 3, 3
+            disabled = True
+        elif layout_preset == "2-4-3 (均衡)":
             def_t, def_m = 2, 4
             disabled = True
         elif layout_preset == "1-5-3 (极限制造)":
@@ -153,17 +156,23 @@ with st.container(border=True):
             st.success(f"产线分配完成", icon="✅")
 
 # --- 板块 3: 自动化科技 (Advanced) ---
-with st.expander("⚙️ 高级科技设置 (菲亚梅塔 / 无人机)", expanded=False):
+with st.expander("⚙️ 高级设置 (菲亚梅塔 / 无人机)", expanded=False):
     col_adv1, col_adv2 = st.columns(2)
 
     with col_adv1:
         st.markdown("##### 🔥 菲亚梅塔体系")
-        enable_fia = st.toggle("启用自动充能", value=True)
+        enable_fia = st.toggle("启用自动充能", value=True, help="自动识别排班中收益最高的干员进行心情恢复")
         if enable_fia:
-            st.warning("⚠️ 需配合 MAA 定时任务 (8/12小时一换)，否则可能导致干员红脸。", icon="🕒")
+            st.warning(
+                "⚠️ **重要提示**：\n\n"
+                "菲亚梅塔体系需要**严格保证换班时间**（通常为 12小时 或 8小时一换）。\n"
+                "建议配合 **MAA 定时任务** 或闹钟使用。\n\n"
+                "🚫 **如果无法保证准时换班，充能对象极易心情耗尽（红脸），反而降低效率，此时请关闭此选项。**",
+                icon="⚠️"
+            )
 
     with col_adv2:
-        st.markdown("##### 🚁 无人机协议")
+        st.markdown("##### 🚁 无人机加速")
         enable_drone = st.toggle("启用无人机加速", value=True)
 
         drone_targets = []
