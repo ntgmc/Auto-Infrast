@@ -3,11 +3,18 @@ import json
 import os
 from logic import WorkplaceOptimizer
 
-# 设置页面配置
+# ==========================================
+# 0. 基础配置与函数
+# ==========================================
 st.set_page_config(page_title="明日方舟基建排班优化器", layout="wide", page_icon="🏭")
 
-# --- 状态初始化 ---
-# 使用 session_state 来保存计算结果，防止点击下载按钮后结果消失
+
+def import_datetime():
+    import datetime
+    return datetime.datetime.now()
+
+
+# 状态初始化
 if 'calculated' not in st.session_state:
     st.session_state.calculated = False
 if 'results' not in st.session_state:
@@ -16,21 +23,37 @@ if 'results' not in st.session_state:
 st.title("🏭 明日方舟基建排班优化器")
 
 # ==========================================
-# 1. 侧边栏：基础文件与干员数据
+# 1. 侧边栏：数据导入 (支持粘贴)
 # ==========================================
 st.sidebar.header("1. 数据导入")
 base_efficiency_path = "efficiency.json"
 
-# 检查环境
 if not os.path.exists(base_efficiency_path):
     st.error("⚠️ 错误：未在仓库中找到 efficiency.json。")
     st.stop()
 
-uploaded_ops = st.sidebar.file_uploader(
-    "上传 operators.json (MAA导出)",
-    type="json",
-    help="请上传包含干员练度数据的 JSON 文件"
-)
+# --- 修改开始：使用 Tab 分页 ---
+input_mode = st.sidebar.radio("选择导入方式:", ["📋 剪贴板粘贴 (推荐)", "📁 文件上传"], horizontal=True)
+
+uploaded_ops = None
+pasted_ops = None
+
+if input_mode == "📁 文件上传":
+    uploaded_ops = st.sidebar.file_uploader(
+        "上传 operators.json",
+        type="json",
+        help="上传 MAA 导出的 JSON 文件"
+    )
+else:
+    pasted_ops = st.sidebar.text_area(
+        "在此处粘贴 MAA 导出的 JSON 内容:",
+        height=300,
+        help="在 MAA '连接设置' -> '导出干员数据' -> 点击 '复制'，然后在此处 Ctrl+V",
+        placeholder='[\n  {\n    "id": "char_002_amiya",\n    "name": "阿米娅",\n    ...\n  }\n]'
+    )
+    if pasted_ops:
+        st.sidebar.caption("✅ 已检测到文本内容")
+# --- 修改结束 ---
 
 # ==========================================
 # 2. 主界面：配置区域
@@ -46,37 +69,43 @@ with col_base1:
 
 with col_base2:
     st.subheader("📦 产物分配")
-    # 贸易站产物
+    # 贸易站
     st.markdown("**贸易站产物需求**")
     col_t1, col_t2 = st.columns(2)
     req_lmd = col_t1.number_input("龙门币 (LMD)", min_value=0, max_value=5, value=2)
     req_orundum = col_t2.number_input("合成玉 (Orundum)", min_value=0, max_value=5, value=0)
 
-    # 校验贸易站数量
     if req_lmd + req_orundum != n_trading:
-        st.warning(f"⚠️ 注意：贸易站产物总数 ({req_lmd + req_orundum}) 与 设施数量 ({n_trading}) 不一致！")
+        st.warning(f"⚠️ 警告：贸易站产物数量 ({req_lmd + req_orundum}) 与 设施数量 ({n_trading}) 不一致！")
 
-    # 制造站产物
+    # 制造站
     st.markdown("**制造站产物需求**")
     col_m1, col_m2, col_m3 = st.columns(3)
     req_gold = col_m1.number_input("赤金", min_value=0, max_value=5, value=2)
     req_shard = col_m2.number_input("源石碎片", min_value=0, max_value=5, value=0)
     req_record = col_m3.number_input("经验书", min_value=0, max_value=5, value=2)
 
-    # 校验制造站数量
     if req_gold + req_shard + req_record != n_manufacture:
-        st.warning(
-            f"⚠️ 注意：制造站产物总数 ({req_gold + req_shard + req_record}) 与 设施数量 ({n_manufacture}) 不一致！")
+        st.warning(f"⚠️ 警告：制造站产物数量 ({req_gold + req_shard + req_record}) 与 设施数量 ({n_manufacture}) 不一致！")
 
 st.divider()
 
-# 高级设置 (折叠起来保持界面整洁)
+# 高级设置
 with st.expander("⚙️ 高级设置 (菲亚梅塔 & 无人机)", expanded=True):
     col_adv1, col_adv2 = st.columns(2)
 
     with col_adv1:
-        st.markdown("**🔥 菲亚梅塔**")
-        enable_fia = st.checkbox("启用菲亚梅塔自动充能", value=True)
+        st.markdown("**🔥 菲亚梅塔 (Fiammetta)**")
+        enable_fia = st.checkbox("启用菲亚梅塔自动充能", value=True, help="自动识别排班中收益最高的干员进行心情恢复")
+
+        if enable_fia:
+            st.warning(
+                "⚠️ **重要提示**：\n\n"
+                "菲亚梅塔体系需要**严格保证换班时间**（通常为 12小时 或 8小时一换）。\n"
+                "建议配合 **MAA 定时任务** 或闹钟使用。\n\n"
+                "🚫 **如果无法保证准时换班，充能对象极易心情耗尽（红脸），反而降低效率，此时请关闭此选项。**",
+                icon="⚠️"
+            )
 
     with col_adv2:
         st.markdown("**🚁 无人机加速**")
@@ -85,7 +114,6 @@ with st.expander("⚙️ 高级设置 (菲亚梅塔 & 无人机)", expanded=True
         drone_targets = []
         if enable_drone:
             st.caption("请分别为3个班次选择加速目标：")
-            # 所有的可选产物名称 (对应 logic.py 中的识别键)
             product_options = {
                 "龙门币": "LMD",
                 "合成玉": "Orundum",
@@ -93,17 +121,15 @@ with st.expander("⚙️ 高级设置 (菲亚梅塔 & 无人机)", expanded=True
                 "经验书": "Battle Record",
                 "源石碎片": "Originium Shard"
             }
-            # 为了方便用户，显示中文，传给后台英文
             option_keys = list(product_options.keys())
 
             d_col1, d_col2, d_col3 = st.columns(3)
-            # 默认值设置：LMD, 赤金, LMD (对应索引 0, 2, 0)
-            t1 = d_col1.selectbox("第1班 加速", option_keys, index=0)
-            t2 = d_col2.selectbox("第2班 加速", option_keys, index=2)
-            t3 = d_col3.selectbox("第3班 加速", option_keys, index=0)
+            t1 = d_col1.selectbox("第1班", option_keys, index=0)
+            t2 = d_col2.selectbox("第2班", option_keys, index=2)
+            t3 = d_col3.selectbox("第3班", option_keys, index=0)
 
             drone_targets = [product_options[t1], product_options[t2], product_options[t3]]
-            drone_order = "pre"  # 默认 pre
+            drone_order = "pre"
         else:
             drone_targets = []
             drone_order = "pre"
@@ -115,117 +141,112 @@ with st.expander("⚙️ 高级设置 (菲亚梅塔 & 无人机)", expanded=True
 st.divider()
 btn_col1, btn_col2 = st.columns([1, 2])
 
-# 生成 Config 字典
+# Config 构建
 current_config = {
     "product_requirements": {
-        "trading_stations": {
-            "LMD": req_lmd,
-            "Orundum": req_orundum
-        },
-        "manufacturing_stations": {
-            "Pure Gold": req_gold,
-            "Originium Shard": req_shard,
-            "Battle Record": req_record
-        }
+        "trading_stations": {"LMD": req_lmd, "Orundum": req_orundum},
+        "manufacturing_stations": {"Pure Gold": req_gold, "Originium Shard": req_shard, "Battle Record": req_record}
     },
     "trading_stations_count": n_trading,
     "manufacturing_stations_count": n_manufacture,
-    "Fiammetta": {
-        "enable": enable_fia
-    },
-    "drones": {
-        "enable": enable_drone,
-        "order": drone_order,
-        "targets": drone_targets
-    }
+    "Fiammetta": {"enable": enable_fia},
+    "drones": {"enable": enable_drone, "order": drone_order, "targets": drone_targets}
 }
 
 start_btn = btn_col1.button("🚀 开始计算排班", type="primary", use_container_width=True)
 
 if start_btn:
-    if not uploaded_ops:
-        st.error("请先在左侧侧边栏上传 operators.json 文件！")
+    # --- 输入数据源校验 ---
+    operators_data_bytes = None
+
+    # 优先检查文件
+    if uploaded_ops is not None:
+        operators_data_bytes = uploaded_ops.getvalue()
+    # 其次检查文本
+    elif pasted_ops and pasted_ops.strip():
+        try:
+            # 尝试解析一下 JSON，确保粘贴的不是乱码
+            json.loads(pasted_ops)
+            operators_data_bytes = pasted_ops.encode('utf-8')
+        except json.JSONDecodeError:
+            st.error("❌ 粘贴的内容不是有效的 JSON 格式！请重新复制 MAA 的导出内容。")
+            st.stop()
     else:
-        with st.spinner("正在分析干员数据与计算最优解，请稍候..."):
-            try:
-                # 1. 保存临时干员文件
-                with open("temp_operators.json", "wb") as f:
-                    f.write(uploaded_ops.getbuffer())
+        st.error("❌ 请在左侧侧边栏上传文件或粘贴 JSON 数据！")
+        st.stop()
+    # --------------------
 
-                # 2. 保存临时配置文件 (从网页UI构建的字典直接写入)
-                with open("temp_config.json", "w", encoding='utf-8') as f:
-                    json.dump(current_config, f, ensure_ascii=False, indent=2)
+    with st.spinner("正在分析干员数据与计算最优解，请稍候..."):
+        try:
+            # 1. 写入临时 Operators 文件
+            with open("temp_operators.json", "wb") as f:
+                f.write(operators_data_bytes)
 
-                # 3. 运行优化器
-                optimizer = WorkplaceOptimizer(
-                    efficiency_file=base_efficiency_path,
-                    operator_file="temp_operators.json",
-                    config_file="temp_config.json"
-                )
+            # 2. 写入临时 Config 文件
+            with open("temp_config.json", "w", encoding='utf-8') as f:
+                json.dump(current_config, f, ensure_ascii=False, indent=2)
 
-                # 执行计算
-                curr_assign = optimizer.get_optimal_assignments(ignore_elite=False)
-                pot_assign = optimizer.get_optimal_assignments(ignore_elite=True)
-                upgrades = optimizer.calculate_upgrade_requirements(curr_assign, pot_assign)
+            # 3. 运行核心逻辑
+            optimizer = WorkplaceOptimizer(
+                efficiency_file=base_efficiency_path,
+                operator_file="temp_operators.json",
+                config_file="temp_config.json"
+            )
 
-
-                # 4. 准备下载数据 (JSON序列化)
-                def clean_json(data):
-                    return {k: v for k, v in data.items() if k != 'raw_results'}
+            curr_assign = optimizer.get_optimal_assignments(ignore_elite=False)
+            pot_assign = optimizer.get_optimal_assignments(ignore_elite=True)
+            upgrades = optimizer.calculate_upgrade_requirements(curr_assign, pot_assign)
 
 
-                json_current = json.dumps(clean_json(curr_assign), ensure_ascii=False, indent=2)
-                json_potential = json.dumps(clean_json(pot_assign), ensure_ascii=False, indent=2)
-
-                # 准备 TXT 内容
-                txt_content = "=== 练度提升建议报告 ===\n\n"
-                txt_content += f"生成时间: {import_datetime().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                txt_content += "=" * 40 + "\n\n"
-
-                if not upgrades:
-                    txt_content += "无需提升练度。\n"
-                else:
-                    for item in upgrades:
-                        gain_val = item['gain']
-                        gain_str = f"{gain_val * 100:.1f}%" if gain_val < 0.9 else f"{gain_val:.1f}%"
-                        if item.get('type') == 'bundle':
-                            names = "+".join([op['name'] for op in item['ops']])
-                            txt_content += f"[组合] {names} | 收益: {gain_str}\n"
-                            for op in item['ops']:
-                                txt_content += f"  - {op['name']}: 精{op['current']} -> 精{op['target']}\n"
-                        else:
-                            txt_content += f"[单人] {item['name']} | 收益: {gain_str}\n"
-                            txt_content += f"  - 精{item['current']} -> 精{item['target']}\n"
-                        txt_content += "-" * 30 + "\n"
-
-                # 5. 将结果存入 session_state
-                st.session_state.results = {
-                    "current": json_current,
-                    "potential": json_potential,
-                    "txt": txt_content,
-                    "efficiency": curr_assign['raw_results'][0].total_efficiency if curr_assign['raw_results'] else 0
-                }
-                st.session_state.calculated = True
-
-                # 清理临时文件
-                if os.path.exists("temp_operators.json"): os.remove("temp_operators.json")
-                if os.path.exists("temp_config.json"): os.remove("temp_config.json")
-
-            except Exception as e:
-                st.error(f"运行出错: {e}")
-                import traceback
-
-                st.text(traceback.format_exc())
+            # 4. 数据打包
+            def clean_json(data):
+                return {k: v for k, v in data.items() if k != 'raw_results'}
 
 
-# 为了使用 datetime，需要在函数内或全局导入
-def import_datetime():
-    import datetime
-    return datetime.datetime.now()
+            json_current = json.dumps(clean_json(curr_assign), ensure_ascii=False, indent=2)
+            json_potential = json.dumps(clean_json(pot_assign), ensure_ascii=False, indent=2)
 
+            txt_content = "=== 练度提升建议报告 ===\n\n"
+            txt_content += f"生成时间: {import_datetime().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            txt_content += "=" * 40 + "\n\n"
+
+            if not upgrades:
+                txt_content += "无需提升练度。\n"
+            else:
+                for item in upgrades:
+                    gain_val = item['gain']
+                    gain_str = f"{gain_val * 100:.1f}%" if gain_val < 0.9 else f"{gain_val:.1f}%"
+                    if item.get('type') == 'bundle':
+                        names = "+".join([op['name'] for op in item['ops']])
+                        txt_content += f"[组合] {names} | 收益: {gain_str}\n"
+                        for op in item['ops']:
+                            txt_content += f"  - {op['name']}: 精{op['current']} -> 精{op['target']}\n"
+                    else:
+                        txt_content += f"[单人] {item['name']} | 收益: {gain_str}\n"
+                        txt_content += f"  - 精{item['current']} -> 精{item['target']}\n"
+                    txt_content += "-" * 30 + "\n"
+
+            # 5. 存入 Session
+            st.session_state.results = {
+                "current": json_current,
+                "potential": json_potential,
+                "txt": txt_content,
+                "efficiency": curr_assign['raw_results'][0].total_efficiency if curr_assign['raw_results'] else 0
+            }
+            st.session_state.calculated = True
+
+            # 清理
+            if os.path.exists("temp_operators.json"): os.remove("temp_operators.json")
+            if os.path.exists("temp_config.json"): os.remove("temp_config.json")
+
+        except Exception as e:
+            st.error(f"运行出错: {e}")
+            import traceback
+
+            st.text(traceback.format_exc())
 
 # ==========================================
-# 4. 结果展示区 (根据 session_state 渲染)
+# 4. 结果展示区
 # ==========================================
 
 if st.session_state.calculated:
@@ -235,9 +256,6 @@ if st.session_state.calculated:
     st.info(f"📊 当前方案首班效率参考: {res['efficiency']:.2f}")
 
     st.subheader("📥 结果下载")
-    st.markdown("您可以同时下载以下所有文件：")
-
-    # 使用列布局放置三个下载按钮
     d_col1, d_col2, d_col3 = st.columns(3)
 
     with d_col1:
@@ -267,6 +285,7 @@ if st.session_state.calculated:
             use_container_width=True
         )
 
-# 如果没有计算过，且有文件，显示提示
-elif uploaded_ops:
-    st.info("👆 请配置好上方参数，然后点击“开始计算排班”按钮。")
+elif not pasted_ops and not uploaded_ops:
+    st.info("👆 请在左侧侧边栏粘贴 JSON 数据或上传文件，然后点击“开始计算排班”。")
+elif pasted_ops or uploaded_ops:
+    st.info("✅ 数据已就绪，请点击“开始计算排班”按钮。")
