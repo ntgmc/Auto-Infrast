@@ -939,12 +939,34 @@ class WorkplaceOptimizer:
         for i, workplace in enumerate(self.workplaces['manufacturing_stations']):
             workplace.current_product = manufacturing_products[i] if i < len(manufacturing_products) else ""
 
+        # --- [修改开始]：构建新的结果头信息 ---
+
+        # 计算基建类型
+        power_station_count = 3
+        # 拼接数字，例如 243
+        building_type_int = int(
+            f"{self.trading_stations_count}{self.manufacturing_stations_count}{power_station_count}")
+
+        # 动态生成标题和描述
+        if ignore_elite:
+            # 潜在模式
+            res_title = "潜在最高效率方案"
+            res_desc = "忽略干员精英化等级限制，仅根据您持有的干员计算的理论最高收益方案。"
+        else:
+            # 当前练度模式
+            res_title = "当前练度最优方案"
+            res_desc = "基于您当前干员的实际练度（精英化等级）生成的最佳排班方案。"
+
         results = {
-            "title": "潜在最高效率方案" if ignore_elite else "当前练度最优方案",
-            "description": "忽略练度限制，仅考虑持有情况" if ignore_elite else "基于当前干员练度",
+            "author": "一只摆烂的42的自动基建排班生成器",  # [新增] 固定作者
+            "title": res_title,  # [修改] 动态标题
+            "description": res_desc,  # [修改] 动态描述
+            "buildingType": building_type_int,  # [新增] 243/252等
+            "planTimes": "3班",  # [新增] 固定班次
             "plans": [],
-            "raw_results": []  # 存储原始 AssignmentResult 对象以便后续分析
+            "raw_results": []
         }
+        # --- [修改结束] ---
 
         operator_usage = {op.name: 0 for op in self.get_available_operators()}
 
@@ -967,9 +989,8 @@ class WorkplaceOptimizer:
             control_operators = set()
             dormitory_operators = set()
             hire_operators = set()
-            processing_operators = set()  # [新增] 收集加工站干员
+            processing_operators = set()
 
-            # 保存当前班次的详细分配结果，用于差异比对
             shift_assignments = []
 
             # 1. 优化制造站
@@ -996,8 +1017,7 @@ class WorkplaceOptimizer:
                 self._collect_requirements(result, shift_used_names, operator_usage,
                                            control_operators, dormitory_operators, hire_operators, processing_operators)
 
-            # 3. 填充基础附属房间（基于上述计算的需求）
-            # 注意：先填入被强制要求的干员，后续 fill_control_center 会在此基础上追加
+            # 3. 填充基础附属房间
             plan["rooms"]["control"][0]["operators"] = list(control_operators)
 
             if dormitory_operators:
@@ -1021,15 +1041,12 @@ class WorkplaceOptimizer:
                     "autofill": False if result.optimal_operators else True
                 })
 
-            # 6. 填充加工站 (如果有需求)
+            # 6. 填充加工站
             if processing_operators:
                 valid_process_ops = list(processing_operators)
                 plan["rooms"]["processing"][0] = {"operators": [valid_process_ops[0]], "autofill": False}
 
-            # =========================================================================
-            # 7. [关键步骤] 填充控制中枢剩余位置
-            #    这一步必须在所有其他房间排完，且被动需求的干员(control_operators)已填入后进行
-            # =========================================================================
+            # 7. 填充控制中枢
             self.fill_control_center(
                 plan,
                 shift_used_names,
@@ -1037,15 +1054,9 @@ class WorkplaceOptimizer:
                 ignore_elite
             )
 
-            # =========================================================================
-            # === [新增] 计算无人机加速对象 ===
-            # =========================================================================
+            # 计算无人机
             plan["drones"] = self._assign_drones(plan, shift)
 
-            # =========================================================================
-            # 8. [最终提交] 将完整的 plan 和 assignments 添加到结果列表
-            #    只在这里添加一次！不要在中间添加！
-            # =========================================================================
             results["plans"].append(plan)
             results["raw_results"].extend(shift_assignments)
 

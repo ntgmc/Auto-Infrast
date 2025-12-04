@@ -6,7 +6,7 @@ from logic import WorkplaceOptimizer
 # ==========================================
 # 0. 基础配置与函数
 # ==========================================
-st.set_page_config(page_title="明日方舟基建排班优化器", layout="wide", page_icon="🏭")
+st.set_page_config(page_title="明日方舟基建排班生成器", layout="wide", page_icon="🏭")
 
 
 def import_datetime():
