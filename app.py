@@ -42,7 +42,7 @@ if 'results' not in st.session_state:
 # 1. 侧边栏：数据源 (Source of Truth)
 # ==========================================
 with st.sidebar:
-    st.image("https://web.hycdn.cn/arknights/official/assets/images/brand.png", width=100)  # 只是个示例Logo，可换
+    # st.image("https://web.hycdn.cn/arknights/official/assets/images/brand.png", width=100)  # 只是个示例Logo，可换
     st.title("基建排班向导")
     st.markdown("---")
 
@@ -77,7 +77,7 @@ with st.sidebar:
 # ==========================================
 
 st.markdown("## 🏭 罗德岛基建排班控制台")
-st.markdown("根据您的干员练度与基建布局，生成理论最高效率的排班方案。")
+st.markdown("根据您的干员练度与基建布局，生成理论最高效率的排班方案。算法目前支持 XX3 （3发电站）优化，暂不支持其他布局。")
 
 # --- 板块 1: 基建布局 (Layout) ---
 with st.container(border=True):
@@ -89,7 +89,7 @@ with st.container(border=True):
     with l_col1:
         layout_preset = st.radio(
             "⚡ 快速预设 (3发电站)",
-            ["3-3-3 (搓玉推荐)", "2-4-3 (均衡)", "1-5-3 (极限制造)", "自定义"],
+            ["2-4-3 (均衡)", "3-3-3 (搓玉推荐)", "1-5-3 (极限制造)", "自定义"],
             index=0,
             horizontal=False
         )
@@ -110,13 +110,13 @@ with st.container(border=True):
             disabled = False
 
         c1, c2 = st.columns(2)
-        n_trading = c1.number_input("贸易站", 1, 5, def_t, disabled=disabled)
-        n_manufacture = c2.number_input("制造站", 1, 5, def_m, disabled=disabled)
+        n_trading = c1.number_input("贸易站", 0, 6, def_t, disabled=disabled)
+        n_manufacture = c2.number_input("制造站", 0, 6, def_m, disabled=disabled)
 
         # 实时计算发电站并校验
         n_power = 9 - n_trading - n_manufacture
         if n_power != 3:
-            st.warning(f"当前为 {n_power} 发电站布局。算法目前仅针对 3 发电站优化，其他布局可能导致不可预知的排班结果。",
+            st.warning(f"当前为 {n_power} 发电站布局。算法目前仅针对 3 发电站优化，暂不支持其他布局。",
                        icon="⚠️")
         else:
             st.caption(f"当前布局: {n_trading}贸易 - {n_manufacture}制造 - {n_power}发电")
@@ -164,7 +164,7 @@ with st.expander("⚙️ 高级设置 (菲亚梅塔 / 无人机)", expanded=Fals
         enable_fia = st.toggle("启用自动充能", value=True, help="自动识别排班中收益最高的干员进行心情恢复")
         if enable_fia:
             st.warning(
-                "⚠️ **重要提示**：\n\n"
+                "**重要提示**：\n\n"
                 "菲亚梅塔体系需要**严格保证换班时间**（通常为 12小时 或 8小时一换）。\n"
                 "建议配合 **MAA 定时任务** 或闹钟使用。\n\n"
                 "🚫 **如果无法保证准时换班，充能对象极易心情耗尽（红脸），反而降低效率，此时请关闭此选项。**",
