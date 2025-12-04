@@ -67,6 +67,14 @@ with col_base1:
     n_trading = st.number_input("贸易站数量", min_value=0, max_value=5, value=2)
     n_manufacture = st.number_input("制造站数量", min_value=0, max_value=5, value=4)
 
+    # --- [新增] 提示信息 ---
+    st.caption("ℹ️ **说明**：当前算法仅支持 **3发电站** 布局，且固定生成 **3班** 排班方案。")
+
+    # [可选] 动态校验：如果贸易+制造不等于6，显示警告
+    current_power = 9 - n_trading - n_manufacture
+    if current_power != 3:
+        st.warning(f"⚠️ 检测到当前设施非 3 发电站，建议调整设施数量以满足 3 发电站限制。", icon="⚠️")
+
 with col_base2:
     st.subheader("📦 产物分配")
     # 贸易站
