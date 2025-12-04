@@ -335,6 +335,6 @@ if st.session_state.calculated:
     # 底部指南
     st.info("""
     **💡 如何使用导出的 JSON？**
-    1. **自动化**: `基建换班` -> 启用 `自定义排班` -> 选择文件。
-    2. **可视化**: 前往 [一图流工具](https://ark.yituliu.cn/tools/scheduleV2) 导入文件预览排班详情。
+    1. **自动化**: **基建换班** -> 启用 **自定义排班** -> 选择文件。
+    2. **可视化**: 前往 [**一图流工具**](https://ark.yituliu.cn/tools/scheduleV2) 导入文件预览排班详情。
     """)
