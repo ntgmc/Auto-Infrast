@@ -79,7 +79,10 @@ with st.sidebar:
 st.markdown("## 🏭 基建排班控制台")
 st.markdown("根据您的干员练度与基建布局，生成理论最高效率的排班方案。算法目前支持 X-X-3 （3发电站）优化，暂不支持其他布局。")
 
+# ==========================================
 # --- 板块 1: 基建布局 (Layout) ---
+# ==========================================
+
 with st.container(border=True):
     st.subheader("1. 基建布局设定")
 
@@ -95,23 +98,54 @@ with st.container(border=True):
         )
 
     with l_col2:
-        # 根据预设自动填充，或者允许自定义
+        # 初始化产物默认值变量
+        p_lmd, p_gold, p_rec, p_shard = 0, 0, 0, 0
+
+        # --- 核心修改逻辑：根据预设定义建筑数量 & 产物分配默认值 ---
         if layout_preset == "3-3-3 (搓玉推荐)":
+            # 3贸易 3制造 -> 2赤金 0经验 1碎片 | 2龙门币 1合成玉
             def_t, def_m = 3, 3
+            p_lmd = 2  # 贸易站默认分配给龙门币的数量 (剩余给合成玉)
+            p_gold = 2  # 制造站：赤金
+            p_rec = 0  # 制造站：经验
+            p_shard = 1  # 制造站：碎片
             disabled = True
+
         elif layout_preset == "2-4-3 (均衡)":
+            # 2贸易 4制造 -> 2赤金 2经验 | 全龙门币
             def_t, def_m = 2, 4
+            p_lmd = 2
+            p_gold = 2
+            p_rec = 2
+            p_shard = 0
             disabled = True
+
         elif layout_preset == "1-5-3 (极限制造)":
+            # 1贸易 5制造 -> 2赤金 3经验 | 全龙门币
             def_t, def_m = 1, 5
+            p_lmd = 1
+            p_gold = 2
+            p_rec = 3
+            p_shard = 0
             disabled = True
-        else:
+
+        else:  # 自定义
             def_t, def_m = 2, 4
             disabled = False
+            # 自定义模式下，默认值设为当前输入框可能的合理值，后续由用户调整
+            p_lmd = 2
+            p_gold = 2
+            p_rec = 2
+            p_shard = 0
 
         c1, c2 = st.columns(2)
+        # 注意：这里仅仅是布局数量
         n_trading = c1.number_input("贸易站", 0, 6, def_t, disabled=disabled)
         n_manufacture = c2.number_input("制造站", 0, 6, def_m, disabled=disabled)
+
+        # 如果是自定义模式，需要修正一下 p_lmd 防止溢出 (比如切到自定义把贸易站降为0)
+        if layout_preset == "自定义":
+            p_lmd = min(p_lmd, n_trading)
 
         # 实时计算发电站并校验
         n_power = 9 - n_trading - n_manufacture
@@ -121,18 +155,27 @@ with st.container(border=True):
         else:
             st.caption(f"当前布局: {n_trading}贸易 - {n_manufacture}制造 - {n_power}发电")
 
+# ==========================================
 # --- 板块 2: 产物策略 (Strategy) ---
+# ==========================================
+
 with st.container(border=True):
     st.subheader("2. 产物策略分配")
 
     col_prod1, col_prod2 = st.columns(2)
 
-    # 贸易站策略：使用 Slider 直观展示比例
+    # 贸易站策略
     with col_prod1:
         st.markdown("#### 💰 贸易站订单")
         if n_trading > 0:
-            # 滑块逻辑：总数固定，分配LMD，剩下的给合成玉
-            req_lmd = st.slider("龙门币 (LMD) 占比", 0, n_trading, n_trading, help="剩下的将分配给合成玉")
+            # 滑块逻辑：使用上方计算出的 p_lmd 作为 value
+            # 注意：key的设置可以帮助Streamlit在预设切换时强制刷新组件
+            req_lmd = st.slider(
+                "龙门币 (LMD) 占比",
+                0, n_trading,
+                value=p_lmd,
+                help="剩下的将分配给合成玉"
+            )
             req_orundum = n_trading - req_lmd
 
             st.info(f"分配: {req_lmd} 龙门币 + {req_orundum} 合成玉")
@@ -143,11 +186,12 @@ with st.container(border=True):
     # 制造站策略
     with col_prod2:
         st.markdown("#### 📦 制造站产线")
-        # 制造站通常比较复杂，保持 Number Input 但优化布局
         m1, m2, m3 = st.columns(3)
-        req_gold = m1.number_input("赤金", 0, n_manufacture, min(2, n_manufacture))
-        req_record = m2.number_input("经验书", 0, n_manufacture, min(2, n_manufacture))
-        req_shard = m3.number_input("源石碎片", 0, n_manufacture, 0)
+
+        # 使用上方计算出的 p_gold, p_rec, p_shard 作为 value
+        req_gold = m1.number_input("赤金", 0, n_manufacture, value=p_gold)
+        req_record = m2.number_input("经验书", 0, n_manufacture, value=p_rec)
+        req_shard = m3.number_input("源石碎片", 0, n_manufacture, value=p_shard)
 
         current_m_total = req_gold + req_record + req_shard
         if current_m_total != n_manufacture:
