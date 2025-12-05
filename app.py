@@ -26,25 +26,33 @@ st.markdown("""
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 
-    /* ---------------------------
-       强制隐藏右上角的 GitHub 图标 / 链接
-       兼容多种 Streamlit 版本与部署环境
-       --------------------------- */
-    /* 常见的 GitHub 链接（包含 github.com 的 a 标签） */
-    a[href*="github.com"] { display: none !important; visibility: hidden !important; }
+    /* ===== 强制隐藏右上角 GitHub 图标（绝对生效版） ===== */
 
-    /* 有些部署会把图标包在 button 或 div 里（带 aria-label 或 title） */
-    button[aria-label*="GitHub"], button[title*="GitHub"], [title*="GitHub"] { display: none !important; }
-
-    /* 针对可能的 svg 图标或含 svg 的容器 */
-    svg[aria-label*="GitHub"], svg[data-testid*="github"] { display: none !important; }
-
-    /* 防止布局因隐藏元素出现空白 */
-    [data-testid="stHeader"], .css-1rs6os.edgvbvh3 { gap: 0 !important; }
-
-    /* 进一步屏蔽带有明显 GitHub 文本或图标类名的元素 */
-    [class*="github"], [class*="GitHub"], [class*="octicon"] { display: none !important; }
-
+    /* 核心按钮容器 */
+    .stAppHeader .stToolbarActions .stToolbarActionButton button {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    
+    /* 为防止版本变动，连父级也一起隐藏 */
+    .stAppHeader .stToolbarActions .stToolbarActionButton {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    
+    /* 某些版本中该按钮会有 data-testid：stToolbarActionButtonIcon */
+    [data-testid="stToolbarActionButtonIcon"] {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    
+    /* 完全移除容器占位空间 */
+    .stAppHeader .stToolbarActions {
+        gap: 0 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
