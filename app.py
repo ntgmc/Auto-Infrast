@@ -2,11 +2,13 @@ import streamlit as st
 import json
 import os
 import datetime
+import time
 from logic import WorkplaceOptimizer
 
 # ==========================================
 # 0. 全局配置与样式优化
 # ==========================================
+version = "1.4.0"
 st.set_page_config(
     page_title="MAA基建排班生成器",
     layout="wide",
@@ -70,7 +72,7 @@ with st.sidebar:
         uploaded_ops = st.file_uploader("上传 operators.json", type="json")
 
     st.markdown("---")
-    st.caption(f"v1.3.0 | Author: 一只摆烂的42")
+    st.caption(f"v{version} | Author: 一只摆烂的42")
 
 # ==========================================
 # 2. 主界面：分步配置向导
