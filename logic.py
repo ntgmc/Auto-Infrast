@@ -498,29 +498,71 @@ class WorkplaceOptimizer:
 
             return base_eff
 
-        # ----------------- 1. 评估体系 -----------------
-        for system_name, rules in system_groups.items():
-            if system_name == "通用": continue
-            for rule in rules:
-                if remaining_slots <= 0: break
+            # ----------------- 1. 评估体系 -----------------
+            for system_name, rules in system_groups.items():
+                if system_name == "通用": continue
+                for rule in rules:
+                    if remaining_slots <= 0: break
 
-                required = rule.operators
+                    required = rule.operators
 
-                # 1. 检查干员是否可用、是否占用、是否满班
-                unavailable_ops = []
-                for op_name in required:
-                    max_usage = 3 if op_name in self.fiammetta_targets and workplace_type == 'trading_station' else 2
-                    if (
-                            op_name not in op_by_name or
-                            op_name in used_names or
-                            op_name in shift_used_names or
-                            operator_usage.get(op_name, 0) >= max_usage
-                    ):
-                        unavailable_ops.append(op_name)
+                    # 1. 检查干员是否可用、是否占用、是否满班
+                    unavailable_ops = []
+                    for op_name in required:
+                        max_usage = 3 if op_name in self.fiammetta_targets and workplace_type == 'trading_station' else 2
+                        if (
+                                op_name not in op_by_name or
+                                op_name in used_names or
+                                op_name in shift_used_names or
+                                operator_usage.get(op_name, 0) >= max_usage
+                        ):
+                            unavailable_ops.append(op_name)
 
-                # === [关键修复] 必须先判断是否缺人，缺人直接跳过，防止后面 KeyError ===
-                if unavailable_ops or len(required) > remaining_slots:
-                    continue
+                    if unavailable_ops or len(required) > remaining_slots:
+                        continue
+
+                    # =========================================================================
+                    # === [修改开始] 特殊依赖检查：制造站迷迭香体系的前置检查 ===
+                    # =========================================================================
+                    # 只有当规则是制造站的迷迭香，且效率极高（>200，代表满配体系）时触发
+                    if workplace_type == 'manufacturing_station' and "迷迭香" in required and rule.synergy_efficiency > 200:
+                        # 必须保证 黑键 和 乌有 在接下来的贸易站计算中是“可用”的
+                        # 如果他们不可用，这个迷迭香的高效规则就不能成立
+                        partners_check = [("黑键", 2), ("乌有", 2)]
+                        partners_ok = True
+
+                        for p_name, p_elite in partners_check:
+                            # A. 检查是否有这个干员
+                            if p_name not in op_by_name:
+                                partners_ok = False;
+                                break
+
+                            # B. 检查是否已经被本班次其他房间（比如还没轮到的贸易站? 不可能，因为制造站先算）
+                            # 这里主要是防止他们被错误地排进了当前制造站的其他位置（虽然不太可能）
+                            # 或者在未来的逻辑修改中顺序变动
+                            if p_name in shift_used_names or p_name in used_names:
+                                partners_ok = False;
+                                break
+
+                            # C. 检查疲劳度 (是否还能上班)
+                            # 黑键/乌有通常是2班倒，除非被菲亚梅塔选中
+                            p_max_usage = 3 if p_name in self.fiammetta_targets else 2
+                            if operator_usage.get(p_name, 0) >= p_max_usage:
+                                partners_ok = False;
+                                break
+
+                            # D. 检查练度 (如果不忽略练度)
+                            if not ignore_elite:
+                                p_op = op_by_name[p_name]
+                                if p_op.elite < p_elite:
+                                    partners_ok = False;
+                                    break
+
+                        if not partners_ok:
+                            continue  # 如果黑键或乌有不可用，跳过这条迷迭香的规则，去匹配低效率的通用规则
+                    # =========================================================================
+                    # === [修改结束] ===
+                    # =========================================================================
 
                 # 2. 特殊依赖检查：黑键/乌有 需要 迷迭香
                 if workplace_type == 'trading_station' and ('黑键' in required or '乌有' in required):
