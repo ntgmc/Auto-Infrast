@@ -632,17 +632,17 @@
       "组合": [
         {
           "combo": ["忍冬/2", "铃兰/2"],
-          "efficiency": 102,
+          "efficiency": 60,
           "priority": 85
         },
         {
           "combo": ["伺夜/2", "陈/2"],
-          "efficiency": 102,
+          "efficiency": 60,
           "priority": 85
         },
         {
           "combo": ["提丰/2", "凛视/2"],
-          "efficiency": 91,
+          "efficiency": 49,
           "priority": 80
         }
       ]
