@@ -432,6 +432,13 @@
           {"combo": ["海沫/2"], "note": "可将莱茵红松转化", "efficiency": 30, "priority": 47}
         ]},
       "自动化": [
+        {
+          "combo": ["温蒂/2", "森蚺/2", "清流/1"],
+          "power": ["承曦格雷伊/2"],
+          "efficiency": 150,
+          "priority": 150,
+          "note": "强制优先级高于迷迭香(140)。"
+        },
         {"combo": ["温蒂/2"], "power": ["承曦格雷伊/2"], "efficiency": 60, "priority": 60},
         {"combo": ["森蚺/2"], "power": ["承曦格雷伊/2"], "efficiency": 40, "priority": 50},
         {"combo": ["掠风/2"], "power": ["承曦格雷伊/2"], "efficiency": 20, "priority": 40},
