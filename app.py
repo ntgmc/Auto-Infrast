@@ -79,7 +79,14 @@ with st.sidebar:
 # ==========================================
 
 st.markdown("## 🏭 基建排班控制台")
-st.markdown("根据您的干员练度与基建布局，生成理论最高效率的排班方案。算法目前支持 X-X-3 （3发电站）优化，暂不支持其他布局。")
+
+# --- 新增代码 START ---
+# 在这里创建一个空的容器，用于稍后展示进度条
+# 把它放在最显眼的地方（标题下方）
+status_container = st.empty()
+# --- 新增代码 END ---
+
+st.markdown("根据您的干员练度与基建布局，生成理论最高效率的排班方案...")
 
 # ==========================================
 # --- 板块 1: 基建布局 (Layout) ---
@@ -273,107 +280,114 @@ if col_action.button("🚀 生成排班方案", type="primary", use_container_wi
             st.toast("❌ 粘贴的 JSON 格式无效", icon="🚫")
             st.stop()
 
-    # 使用 st.status 提供高级反馈
-    with st.status("正在启动神经模拟环境...", expanded=True) as status:
-        # 初始化进度条
-        progress_bar = st.progress(0)
+    # --- 核心修改：指定在顶部的容器中渲染 ---
+    with status_container:
+        # 这里的代码和之前一样，但现在它会出现在页面顶部！
+        with st.status("正在启动神经模拟环境...", expanded=True) as status:
+            # 初始化进度条
+            progress_bar = st.progress(0)
 
-        try:
-            # --- 阶段 1: 数据加载 (10%) ---
-            st.write("📥 读取干员练度数据...")
-            time.sleep(0.3)  # 模拟I/O延迟
+            try:
+                # --- 阶段 1: 数据加载 (10%) ---
+                st.write("📥 读取干员练度数据...")
+                time.sleep(0.3)  # 模拟I/O延迟
 
-            with open("temp_ops.json", "wb") as f:
-                f.write(operators_bytes)
+                with open("temp_ops.json", "wb") as f:
+                    f.write(operators_bytes)
 
-            progress_bar.progress(10)
+                progress_bar.progress(10)
 
-            # --- 阶段 2: 配置解析 (25%) ---
-            st.write("⚙️ 解析基建布局配置...")
-            time.sleep(0.4)
+                # --- 阶段 2: 配置解析 (25%) ---
+                st.write("⚙️ 解析基建布局配置...")
+                time.sleep(0.4)
 
-            with open("temp_conf.json", "w", encoding='utf-8') as f:
-                json.dump(current_config, f, ensure_ascii=False)
+                with open("temp_conf.json", "w", encoding='utf-8') as f:
+                    json.dump(current_config, f, ensure_ascii=False)
 
-            progress_bar.progress(25)
+                progress_bar.progress(25)
 
-            # --- 阶段 3: 算法初始化 (40%) ---
-            st.write("🧠 加载 WorkplaceOptimizer 核心算法...")
-            # 模拟加载大型模型的延迟
-            time.sleep(0.6)
-            optimizer = WorkplaceOptimizer("efficiency.json", "temp_ops.json", "temp_conf.json")
+                # --- 阶段 3: 算法初始化 (40%) ---
+                st.write("🧠 加载 WorkplaceOptimizer 核心算法...")
+                # 模拟加载大型模型的延迟
+                time.sleep(0.6)
+                optimizer = WorkplaceOptimizer("efficiency.json", "temp_ops.json", "temp_conf.json")
 
-            progress_bar.progress(40)
+                progress_bar.progress(40)
 
-            # --- 阶段 4: 计算当前最优解 (65%) ---
-            st.write("📊 正在演算当前练度最优解 (Monte Carlo / Greedy)...")
-            time.sleep(0.8)  # 模拟复杂计算
-            curr = optimizer.get_optimal_assignments(ignore_elite=False)
+                # --- 阶段 4: 计算当前最优解 (65%) ---
+                st.write("📊 正在演算当前练度最优解 (Monte Carlo / Greedy)...")
+                time.sleep(0.8)  # 模拟复杂计算
+                curr = optimizer.get_optimal_assignments(ignore_elite=False)
 
-            progress_bar.progress(65)
+                progress_bar.progress(65)
 
-            # --- 阶段 5: 计算理论极限 (85%) ---
-            st.write("🔮 正在推演理论极限模型...")
-            time.sleep(0.5)
-            pot = optimizer.get_optimal_assignments(ignore_elite=True)
+                # --- 阶段 5: 计算理论极限 (85%) ---
+                st.write("🔮 正在推演理论极限模型...")
+                time.sleep(0.5)
+                pot = optimizer.get_optimal_assignments(ignore_elite=True)
 
-            progress_bar.progress(85)
+                progress_bar.progress(85)
 
-            # --- 阶段 6: 差异分析与报告生成 (95%) ---
-            st.write("📈 生成练度提升路径分析报告...")
-            upgrades = optimizer.calculate_upgrade_requirements(curr, pot)
-
-
-            # 结果处理逻辑
-            def clean(d):
-                return {k: v for k, v in d.items() if k != 'raw_results'}
+                # --- 阶段 6: 差异分析与报告生成 (95%) ---
+                st.write("📈 生成练度提升路径分析报告...")
+                upgrades = optimizer.calculate_upgrade_requirements(curr, pot)
 
 
-            # 生成 TXT 内容
-            txt = "=== 基建提升建议 ===\n"
-            txt += f"生成时间: {get_timestamp()}\n{'=' * 40}\n\n"
-            if not upgrades:
-                txt += "✅ 完美！您的队伍已达到当前配置的理论极限效率。\n"
-            else:
-                for item in upgrades:
-                    g = item['gain']
-                    g_str = f"{g * 100:.1f}%" if g < 0.9 else f"{g:.1f}%"
-                    if item.get('type') == 'bundle':
-                        names = "+".join([o['name'] for o in item['ops']])
-                        txt += f"[组合] {names}\n   收益: {item['rooms']} 效率 +{g_str}\n"
-                        for o in item['ops']: txt += f"   - {o['name']}: 精{o['current']} -> 精{o['target']}\n"
-                    else:
-                        txt += f"[单人] {item['name']}\n   收益: {item['rooms']} 效率 +{g_str}\n"
-                        txt += f"   - 当前: 精{item['current']} -> 目标: 精{item['target']}\n"
-                    txt += "-" * 30 + "\n"
+                # 结果处理逻辑
+                def clean(d):
+                    return {k: v for k, v in d.items() if k != 'raw_results'}
 
-            time.sleep(0.4)  # 给人一种正在“生成文件”的感觉
-            progress_bar.progress(95)
 
-            # 保存到 Session State
-            st.session_state.results = {
-                "curr": json.dumps(clean(curr), ensure_ascii=False, indent=2),
-                "pot": json.dumps(clean(pot), ensure_ascii=False, indent=2),
-                "txt": txt,
-                "eff": curr['raw_results'][0].total_efficiency if curr['raw_results'] else 0
-            }
-            st.session_state.calculated = True
+                # 生成 TXT 内容
+                txt = "=== 基建提升建议 ===\n"
+                txt += f"生成时间: {get_timestamp()}\n{'=' * 40}\n\n"
+                if not upgrades:
+                    txt += "✅ 完美！您的队伍已达到当前配置的理论极限效率。\n"
+                else:
+                    for item in upgrades:
+                        g = item['gain']
+                        g_str = f"{g * 100:.1f}%" if g < 0.9 else f"{g:.1f}%"
+                        if item.get('type') == 'bundle':
+                            names = "+".join([o['name'] for o in item['ops']])
+                            txt += f"[组合] {names}\n   收益: {item['rooms']} 效率 +{g_str}\n"
+                            for o in item['ops']: txt += f"   - {o['name']}: 精{o['current']} -> 精{o['target']}\n"
+                        else:
+                            txt += f"[单人] {item['name']}\n   收益: {item['rooms']} 效率 +{g_str}\n"
+                            txt += f"   - 当前: 精{item['current']} -> 目标: 精{item['target']}\n"
+                        txt += "-" * 30 + "\n"
 
-            # 清理临时文件
-            if os.path.exists("temp_ops.json"): os.remove("temp_ops.json")
-            if os.path.exists("temp_conf.json"): os.remove("temp_conf.json")
+                time.sleep(0.4)  # 给人一种正在“生成文件”的感觉
+                progress_bar.progress(95)
 
-            # --- 完成 (100%) ---
-            progress_bar.progress(100)
-            time.sleep(0.2)  # 稍微停顿一下让用户看到100%
-            status.update(label="✅ 神经模拟完成！方案已生成", state="complete", expanded=False)
+                # 保存到 Session State
+                st.session_state.results = {
+                    "curr": json.dumps(clean(curr), ensure_ascii=False, indent=2),
+                    "pot": json.dumps(clean(pot), ensure_ascii=False, indent=2),
+                    "txt": txt,
+                    "eff": curr['raw_results'][0].total_efficiency if curr['raw_results'] else 0
+                }
+                st.session_state.calculated = True
 
-        except Exception as e:
-            status.update(label="❌ 计算过程中断", state="error")
-            st.error(f"错误详情: {str(e)}")
-            import traceback
+                # 清理临时文件
+                if os.path.exists("temp_ops.json"): os.remove("temp_ops.json")
+                if os.path.exists("temp_conf.json"): os.remove("temp_conf.json")
 
-            st.code(traceback.format_exc())
+                # --- 完成 (100%) ---
+                progress_bar.progress(100)
+                time.sleep(0.2)  # 稍微停顿一下让用户看到100%
+                status.update(label="✅ 神经模拟完成！方案已生成", state="complete", expanded=False)
+
+                # 可选：给用户看1秒完成状态，然后清空顶部区域，
+                # 这样用户的注意力会自然转移到下方出现的“结果仪表盘”
+                # time.sleep(1.5)
+                # status_container.empty()
+
+            except Exception as e:
+                status.update(label="❌ 计算过程中断", state="error")
+                st.error(f"错误详情: {str(e)}")
+                import traceback
+
+                st.code(traceback.format_exc())
 
 # ==========================================
 # 4. 结果仪表盘
